@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Next Road</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+  }
+  body {
+    overflow: hidden;
+    background: #1b2a1a;
+    font-family: "Trebuchet MS", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  @media (orientation: landscape) and (max-height: 500px) {
+    #homeScreen { padding: 8px; gap: 6px; }
+    .gameLogo { font-size: 22px; }
+    .gameTagline { font-size: 10px; max-width: 480px; }
+    .coinBank { padding: 4px 12px; font-size: 12px; }
+    .woodBtn { padding: 8px 18px; font-size: 13px; }
+    .diffBtn { padding: 6px 10px; font-size: 12px; }
+  }
+  canvas {
+    display: block;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  #hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    z-index: 10;
+    pointer-events: none;
+  }
+  #bossHint {
+    position: fixed;
+    top: 40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #ffd166;
+    font-weight: 700;
+    font-size: 13px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+    z-index: 10;
+    pointer-events: none;
+    display: none;
+  }
+
+  /* ===== Beranda: tema hutan/petualangan, sengaja beda dari game 3D ===== */
+  #homeScreen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(255,214,102,0.15), transparent 40%),
+      linear-gradient(180deg, #2d4a2b 0%, #1b2e1a 60%, #12200f 100%);
+    color: #fff5e6;
+    text-align: center;
+    z-index: 30;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  #homeScreen.hidden { display: none; }
+
+  .gameLogo {
+    font-size: 34px;
+    font-weight: 900;
+    color: #ffd166;
+    text-shadow: 3px 3px 0 #6b3f1d, 0 0 20px rgba(255,209,102,0.4);
+    letter-spacing: 1px;
+  }
+  .gameTagline { font-size: 12px; color: #cfe8c0; opacity: 0.85; max-width: 300px; }
+
+  .woodBtn {
+    padding: 12px 26px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 8px;
+    border: 3px solid #6b3f1d;
+    background: linear-gradient(180deg, #a0632f, #7a4a24);
+    color: #fff5e6;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #4a2c14;
+  }
+  .woodBtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #4a2c14; }
+  .woodBtn.small { padding: 8px 16px; font-size: 12px; }
+  .woodBtn.green { background: linear-gradient(180deg, #5a9e4a, #3d7530); border-color: #234d1c; box-shadow: 0 3px 0 #234d1c; }
+  .woodBtn.green:active { box-shadow: 0 1px 0 #234d1c; }
+  .woodBtn.gold { background: linear-gradient(180deg, #e8b84a, #c9911f); border-color: #7a5a10; box-shadow: 0 3px 0 #7a5a10; color: #3a2408; }
+  .woodBtn.gold:active { box-shadow: 0 1px 0 #7a5a10; }
+
+  .menuRow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+  .diffPicker { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+  .diffBtn {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.2);
+    color: #fff;
+    cursor: pointer;
+  }
+  .diffBtn.easy { border-color: #6ee7f5; }
+  .diffBtn.medium { border-color: #ffd166; }
+  .diffBtn.hard { border-color: #ff8f47; }
+  .diffBtn.insane { border-color: #ff5577; }
+  .diffBtn:active { transform: scale(0.95); }
+
+  .coinBank {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd166;
+    background: rgba(0,0,0,0.25);
+    padding: 6px 14px;
+    border-radius: 20px;
+  }
+
+  /* ===== Panel generik (toko, checkpoint, cutscene) ===== */
+  #panelScreen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: radial-gradient(circle at 50% 20%, rgba(40,30,20,0.97), rgba(10,8,5,0.98));
+    background-size: cover;
+    background-position: center;
+    color: #fff;
+    text-align: center;
+    z-index: 30;
+    padding: 20px;
+    overflow-y: auto;
+    transition: background 0.4s ease;
+  }
+  #panelScreen.show { display: flex; }
+  .panelTitle { font-size: 24px; font-weight: 800; color: #ffd166; }
+  .panelSub { font-size: 13px; opacity: 0.8; max-width: 320px; }
+
+  .checkpointGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    max-width: 360px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .cpBtn {
+    padding: 8px 4px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    cursor: pointer;
+  }
+  .cpBtn.boss { border-color: #ff5577; background: rgba(255,85,119,0.18); }
+  .cpBtn:active { transform: scale(0.94); }
+
+  .shopGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 340px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 4px;
+  }
+  .shopItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 12px;
+  }
+  .shopSwatch { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.4); }
+  .shopInfo { flex: 1; text-align: left; }
+  .shopName { font-size: 13px; font-weight: 700; }
+  .shopPrice { font-size: 11px; opacity: 0.75; }
+  .shopBtn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+  .shopBtn.buy { background: #ffd166; color: #3a2408; }
+  .shopBtn.equip { background: #6ee7f5; color: #0a2830; }
+  .shopBtn.equipped { background: #5a9e4a; color: #fff; }
+  .shopBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #touchControls {
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    display: none;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 10;
+  }
+  .tBtn {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 2px solid rgba(255,255,255,0.35);
+    color: #fff;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tBtn:active { background: rgba(255,255,255,0.35); }
+  #dpad { display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div>❤️ <span id="livesText">3</span> &nbsp; 🪙 <span id="coinsText">0</span> &nbsp; <span id="powerupIcon"></span></div>
+  <div id="levelHud">Level 1/110</div>
+</div>
+<div id="bossHint">⚠️ Kalahkan Boss untuk membuka gua berikutnya!</div>
+
+<!-- ===== BERANDA ===== -->
+<div id="homeScreen">
+  <div class="gameLogo">🦊 NEXT ROAD</div>
+  <div class="gameTagline">Petualangan rubah kecil melintasi hutan, gua, gurun, salju, dan gunung api. 110 level, boss tiap kelipatan 5!</div>
+  <div class="coinBank">🪙 <span id="homeCoins">0</span> koin tersimpan</div>
+
+  <div class="diffPicker" id="diffPickerHome">
+    <button class="diffBtn easy" data-d="easy" onclick="selectDifficulty('easy')">Easy</button>
+    <button class="diffBtn medium" data-d="medium" onclick="selectDifficulty('medium')">Medium</button>
+    <button class="diffBtn hard" data-d="hard" onclick="selectDifficulty('hard')">Hard</button>
+    <button class="diffBtn insane" data-d="insane" onclick="selectDifficulty('insane')">Insane</button>
+  </div>
+  <div class="gameTagline" style="font-size:11px;color:#ff8fa3;">⚠️ Mode Insane: setiap kali memilih level, nyawa langsung berkurang 1!</div>
+  <div class="gameTagline" style="font-size:11px;color:#cfe8c0;">🌰 Tembak biji (tombol 🌰 / tuts X) &nbsp; 🎁 Pakai item (tombol 🎁 / tuts C)<br>🍎 Apel: +nyawa &nbsp; 🍌 Pisang & 🥭 Mangga: serangan &nbsp; 🌰 Durian: besar + perisai</div>
+
+  <div class="menuRow">
+    <button class="woodBtn green" onclick="beginRun(0)">▶ Main dari Awal</button>
+    <button class="woodBtn" onclick="openCheckpoints()">🚩 Pilih Checkpoint</button>
+  </div>
+  <div class="menuRow">
+    <button class="woodBtn gold" onclick="openShop()">🛒 Toko</button>
+  </div>
+</div>
+
+<!-- ===== PANEL (checkpoint / toko / cutscene / game over) ===== -->
+<div id="panelScreen">
+  <div class="panelTitle" id="panelTitle">Judul</div>
+  <div class="panelSub" id="panelSub">Deskripsi</div>
+  <div id="panelBody"></div>
+  <div class="menuRow" id="panelActions"></div>
+</div>
+
+<div id="touchControls">
+  <div id="dpad">
+    <div class="tBtn" id="leftBtn">◀</div>
+    <div class="tBtn" id="rightBtn">▶</div>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <div class="tBtn" id="seedBtn" title="Tembak biji">🌰</div>
+    <div class="tBtn" id="useBtn" title="Pakai item">🎁</div>
+    <div class="tBtn" id="jumpBtn">⬆</div>
+  </div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+  // ============================================================
+  //  Next Road — platformer 2D, 110 level, checkpoint, toko
+  // ============================================================
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const TILE = 40;
+  const ROWS = 8;
+  const TOTAL_LEVELS = 110;
+  const CHECKPOINT_STEP = 5; // level 1 dan tiap kelipatan 5 adalah checkpoint
+
+  function resizeCanvas() {
+    // Resolusi logika game tetap (agar level/fisika konsisten), lalu di-scale via CSS
+    // supaya pas baik di posisi tegak (portrait) maupun miring (landscape).
+    const baseW = Math.min(window.innerWidth, 900);
+    const baseH = ROWS * TILE + 40;
+    canvas.width = baseW;
+    canvas.height = baseH;
+
+    const availW = window.innerWidth;
+    // Sisakan sedikit ruang atas (HUD) & bawah (tombol sentuh saat landscape pendek)
+    const availH = window.innerHeight - (isTouchDevice() ? 70 : 20);
+    const scale = Math.max(0.4, Math.min(availW / baseW, availH / baseH, 1.6));
+
+    canvas.style.width = (baseW * scale) + "px";
+    canvas.style.height = (baseH * scale) + "px";
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("orientationchange", () => setTimeout(resizeCanvas, 250));
+  if (window.screen && window.screen.orientation) {
+    window.screen.orientation.addEventListener("change", () => setTimeout(resizeCanvas, 250));
+  }
+
+  // ===== Mode layar penuh saat landscape (beranda & game ikut penuh sesuai layar HP) =====
+  function isLandscapeNow() {
+    return window.matchMedia("(orientation: landscape)").matches;
+  }
+  function syncFullscreenWithOrientation() {
+    if (!isTouchDevice()) return;
+    try {
+      if (isLandscapeNow()) {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && el.requestFullscreen) {
+          el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+        }
+      } else if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch (e) {}
+  }
+  // Fullscreen API butuh gesture pengguna di kebanyakan browser mobile,
+  // jadi dicoba tiap kali pengguna menyentuh layar (aman dipanggil berkali-kali).
+  document.addEventListener("touchend", syncFullscreenWithOrientation, { passive: true });
+  document.addEventListener("click", syncFullscreenWithOrientation);
+  window.addEventListener("orientationchange", () => setTimeout(syncFullscreenWithOrientation, 300));
+  if (window.screen && window.screen.orientation) {
+    window.screen.orientation.addEventListener("change", () => setTimeout(syncFullscreenWithOrientation, 300));
+  }
+  document.addEventListener("fullscreenchange", () => setTimeout(resizeCanvas, 100));
+
+  // ===== Simpan progres (localStorage) =====
+  function loadNum(key, def) {
+    try { const v = parseInt(localStorage.getItem(key), 10); return isNaN(v) ? def : v; } catch (e) { return def; }
+  }
+  function saveNum(key, val) {
+    try { localStorage.setItem(key, String(val)); } catch (e) {}
+  }
+  function loadJSON(key, def) {
+    try { return JSON.parse(localStorage.getItem(key)) || def; } catch (e) { return def; }
+  }
+  function saveJSON(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }
+
+  let coinBank = loadNum("nextroad_coins", 0);
+  let maxLevelReached = loadNum("nextroad_maxlevel", 1);
+  let ownedAccessories = loadJSON("nextroad_owned", ["none"]);
+  let equippedAccessory = localStorage.getItem("nextroad_equipped") || "none";
+
+  function addCoins(n) {
+    coinBank += n;
+    saveNum("nextroad_coins", coinBank);
+    document.getElementById("coinsText").textContent = coinBank;
+    document.getElementById("homeCoins").textContent = coinBank;
+  }
+
+  function updateMaxLevel(levelNum) {
+    if (levelNum > maxLevelReached) {
+      maxLevelReached = levelNum;
+      saveNum("nextroad_maxlevel", maxLevelReached);
+    }
+  }
+
+  // ===== Toko aksesoris (topi) =====
+  const SHOP_ITEMS = [
+    { id: "none",   name: "Tanpa Topi",   cost: 0,   color: "#7a4a24" },
+    { id: "red",    name: "Topi Merah",   cost: 100, color: "#d1291b" },
+    { id: "blue",   name: "Topi Biru",    cost: 150, color: "#2f6fed" },
+    { id: "purple", name: "Topi Ungu",    cost: 250, color: "#a78bfa" },
+    { id: "gold",   name: "Topi Emas",    cost: 400, color: "#e8b84a" }
+  ];
+
+  function openShop() {
+    const body = document.getElementById("panelBody");
+    body.innerHTML = "";
+    const grid = document.createElement("div");
+    grid.className = "shopGrid";
+
+    SHOP_ITEMS.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "shopItem";
+
+      const swatch = document.createElement("div");
+      swatch.className = "shopSwatch";
+      swatch.style.background = item.color;
+      row.appendChild(swatch);
+
+      const info = document.createElement("div");
+      info.className = "shopInfo";
+      info.innerHTML = "<div class='shopName'>" + item.name + "</div><div class='shopPrice'>" + (item.cost === 0 ? "Gratis" : "🪙 " + item.cost) + "</div>";
+      row.appendChild(info);
+
+      const owned = ownedAccessories.includes(item.id);
+      const equipped = equippedAccessory === item.id;
+      const btn = document.createElement("button");
+      if (equipped) {
+        btn.className = "shopBtn equipped";
+        btn.textContent = "Terpakai";
+        btn.disabled = true;
+      } else if (owned) {
+        btn.className = "shopBtn equip";
+        btn.textContent = "Pakai";
+        btn.onclick = () => { equippedAccessory = item.id; localStorage.setItem("nextroad_equipped", item.id); openShop(); };
+      } else {
+        btn.className = "shopBtn buy";
+        btn.textContent = "Beli";
+        btn.disabled = coinBank < item.cost;
+        btn.onclick = () => {
+          if (coinBank < item.cost) return;
+          addCoins(-item.cost);
+          ownedAccessories.push(item.id);
+          saveJSON("nextroad_owned", ownedAccessories);
+          equippedAccessory = item.id;
+          localStorage.setItem("nextroad_equipped", item.id);
+          openShop();
+        };
+      }
+      row.appendChild(btn);
+      grid.appendChild(row);
+    });
+
+    body.appendChild(grid);
+
+    setPanelBiomeBackground(getBiome(maxLevelReached || 1));
+    document.getElementById("panelTitle").textContent = "🛒 Toko Aksesoris";
+    document.getElementById("panelSub").textContent = "Beli topi pakai koin yang kamu kumpulkan di dalam game.";
+    document.getElementById("panelActions").innerHTML = "";
+    const backBtn = document.createElement("button");
+    backBtn.className = "woodBtn small";
+    backBtn.textContent = "⬅ Kembali";
+    backBtn.onclick = closePanel;
+    document.getElementById("panelActions").appendChild(backBtn);
+
+    document.getElementById("homeScreen").classList.add("hidden");
+    document.getElementById("panelScreen").classList.add("show");
+  }
+
+  // ===== Checkpoint picker =====
+  function openCheckpoints() {
+    const body = document.getElementById("panelBody");
+    body.innerHTML = "";
+    const grid = document.createElement("div");
+    grid.className = "checkpointGrid";
+
+    for (const lvl of getCheckpointLevels(maxLevelReached)) {
+      const btn = document.createElement("button");
+      const boss = isBossLevelNum(lvl);
+      btn.className = "cpBtn" + (boss ? " boss" : "");
+      btn.innerHTML = "Lv " + lvl + (boss ? " 👹" : " 🚪") +
+        "<br><span style='font-size:9px;opacity:0.8;'>" + getBiome(lvl).name + "</span>";
+      btn.onclick = () => beginRun(lvl - 1);
+      grid.appendChild(btn);
+    }
+    if (maxLevelReached < 1) {
+      const info = document.createElement("div");
+      info.className = "panelSub";
+      info.textContent = "Belum ada checkpoint. Main dari awal dulu ya.";
+      grid.appendChild(info);
+    }
+
+    body.appendChild(grid);
+
+    setPanelBiomeBackground(getBiome(maxLevelReached || 1));
+    document.getElementById("panelTitle").textContent = "🚩 Pilih Checkpoint";
+    document.getElementById("panelSub").textContent = "🚪 = awal map/biome baru, 👹 = level boss. Muncul tiap kelipatan " + CHECKPOINT_STEP + " level yang sudah pernah kamu capai.";
+    document.getElementById("panelActions").innerHTML = "";
+    const backBtn = document.createElement("button");
+    backBtn.className = "woodBtn small";
+    backBtn.textContent = "⬅ Kembali";
+    backBtn.onclick = closePanel;
+    document.getElementById("panelActions").appendChild(backBtn);
+
+    document.getElementById("homeScreen").classList.add("hidden");
+    document.getElementById("panelScreen").classList.add("show");
+  }
+
+  function closePanel() {
+    document.getElementById("panelScreen").classList.remove("show");
+    document.getElementById("homeScreen").classList.remove("hidden");
+    document.getElementById("panelScreen").style.background = "";
+  }
+
+  // Set background panel checkpoint sesuai biome level (dipanggil saat mati/tamat/buka checkpoint)
+  function setPanelBiomeBackground(biome) {
+    const panel = document.getElementById("panelScreen");
+    panel.style.background =
+      "linear-gradient(rgba(8,6,4,0.72), rgba(8,6,4,0.85)), " +
+      "linear-gradient(180deg, " + biome.sky + " 0%, " + biome.groundBase + " 100%)";
+  }
+
+  // ===== Tingkat kesulitan =====
+  const DIFFICULTIES = {
+    easy:   { enemySpeedMul: 0.7, enemyCountMul: 0.6, lives: 5, gapChance: 0.55, label: "EASY" },
+    medium: { enemySpeedMul: 1.0, enemyCountMul: 1.0, lives: 4, gapChance: 0.75, label: "MEDIUM" },
+    hard:   { enemySpeedMul: 1.4, enemyCountMul: 1.3, lives: 3, gapChance: 0.9,  label: "HARD" },
+    insane: { enemySpeedMul: 1.9, enemyCountMul: 1.6, lives: 2, gapChance: 1.0,  label: "INSANE" }
+  };
+  let currentDifficulty = "easy";
+
+  function selectDifficulty(d) {
+    currentDifficulty = d;
+    document.querySelectorAll(".diffBtn").forEach(btn => {
+      btn.style.outline = (btn.dataset.d === d) ? "3px solid #fff" : "none";
+    });
+  }
+  selectDifficulty("easy");
+
+  // ===== Kotak kayu & buah kekuatan =====
+  const FRUIT_INFO = {
+    apple:  { emoji: "🍎", label: "Apel" },
+    banana: { emoji: "🍌", label: "Pisang" },
+    mango:  { emoji: "🥭", label: "Mangga" },
+    durian: { emoji: "🌰", label: "Durian" }
+  };
+  const SHIELD_DURATION = 600;   // frame (~10 detik)
+  const SEED_COOLDOWN_MAX = 25;  // frame (~0.4 detik)
+  const BANANA_RANGE = 160;
+  const MANGO_FUSE = 45;
+  const MANGO_RADIUS = 90;
+
+  let crates = [];
+  let seeds = [];
+  let bananas = [];
+  let mangoBombs = [];
+  let explosions = [];
+  let seedCooldown = 0;
+
+  // ===== Zona / biome =====
+  const BIOMES = [
+    { name: "Hutan",      sky: "#5c94fc", ground: "#4caf50", groundBase: "#8b5a2b", enemyType: "hedgehog", enemyColor: "#a0632f" },
+    { name: "Gua",        sky: "#20222f", ground: "#5a5a63", groundBase: "#333340", enemyType: "bat",      enemyColor: "#5a3d8f" },
+    { name: "Gurun",      sky: "#f4d58d", ground: "#d8b96a", groundBase: "#a8813f", enemyType: "scorpion", enemyColor: "#c98a3a" },
+    { name: "Salju",      sky: "#cfe8f7", ground: "#eef7fb", groundBase: "#b8d6e6", enemyType: "polarbear", enemyColor: "#eef5fa" },
+    { name: "Gunung Api", sky: "#3a1414", ground: "#6b2b20", groundBase: "#401510", enemyType: "bat",      enemyColor: "#d94f2b" }
+  ];
+
+  // Biome khusus level terakhir: hutan lebat & gelap tempat rumah kayu kita bersembunyi
+  const FINAL_BIOME = {
+    name: "Hutan Lebat", sky: "#0f2410", ground: "#1f4d20", groundBase: "#2c1c0f",
+    enemyType: "hedgehog", enemyColor: "#5a3d1f"
+  };
+
+  function getBiome(levelNum) {
+    if (levelNum === TOTAL_LEVELS) return FINAL_BIOME;
+    const zoneIndex = Math.floor((levelNum - 1) / 5) % BIOMES.length;
+    return BIOMES[zoneIndex];
+  }
+
+  function isBossLevelNum(levelNum) {
+    return levelNum % 5 === 0 && levelNum <= 105;
+  }
+
+  // Checkpoint mencakup DUA jenis level: awal tiap biome/map baru (lvl 1, 6, 11, 16, ...)
+  // DAN level boss tiap biome (lvl 5, 10, 15, 20, ...) — jadi kamu bisa loncat baik ke
+  // boss suatu biome maupun langsung ke map/biome berikutnya setelah boss itu.
+  function isBiomeStartLevel(levelNum) {
+    return levelNum === 1 || (levelNum - 1) % CHECKPOINT_STEP === 0;
+  }
+  function getCheckpointLevels(maxLvl) {
+    const levels = [];
+    for (let lvl = 1; lvl <= maxLvl; lvl++) {
+      if (isBiomeStartLevel(lvl) || isBossLevelNum(lvl)) levels.push(lvl);
+    }
+    return levels;
+  }
+
+  function seededRandom(seed) {
+    let s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return function () {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+
+  // ===== State level aktif =====
+  let currentLevelIndex = 0;
+  let platforms = [];
+  let coins = [];
+  let enemies = [];
+  let hazards = [];
+  let flag = null;
+  let levelWidthPx = 0;
+  let levelBoss = null;
+  let currentBiome = BIOMES[0];
+
+  function generateLevel(levelNum) {
+    platforms = [];
+    coins = [];
+    enemies = [];
+    hazards = [];
+    crates = [];
+    seeds = [];
+    bananas = [];
+    mangoBombs = [];
+    explosions = [];
+    levelBoss = null;
+
+    const diff = DIFFICULTIES[currentDifficulty];
+    const biome = getBiome(levelNum);
+    currentBiome = biome;
+    const rand = seededRandom(levelNum * 97 + 13);
+    const boss = isBossLevelNum(levelNum);
+
+    const groundRow = ROWS - 1;
+    const widthTiles = boss ? 22 : Math.min(30 + levelNum, 70);
+    levelWidthPx = widthTiles * TILE;
+
+    const ground = new Array(widthTiles).fill(true);
+
+    if (!boss) {
+      let x = 6;
+      while (x < widthTiles - 6) {
+        if (rand() < diff.gapChance * 0.35) {
+          const gapW = rand() < 0.5 ? 1 : 2;
+          for (let g = 0; g < gapW && x + g < widthTiles - 5; g++) ground[x + g] = false;
+          x += gapW + 3;
+        } else {
+          x++;
+        }
+      }
+    }
+
+    for (let x = 0; x < widthTiles; x++) {
+      if (ground[x]) {
+        platforms.push({ x: x * TILE, y: groundRow * TILE, w: TILE, h: TILE * 2 });
+      }
+    }
+
+    const platformCount = Math.min(3 + Math.floor(levelNum / 8), 10);
+    for (let i = 0; i < platformCount; i++) {
+      const px = 8 + Math.floor(rand() * (widthTiles - 14));
+      const py = groundRow - (2 + Math.floor(rand() * 2));
+      const plen = 2 + Math.floor(rand() * 3);
+      for (let k = 0; k < plen && px + k < widthTiles - 2; k++) {
+        platforms.push({ x: (px + k) * TILE, y: py * TILE, w: TILE, h: TILE });
+      }
+      if (rand() < 0.7) {
+        coins.push({ x: (px + Math.floor(plen / 2)) * TILE + TILE / 2, y: py * TILE - 20, r: 10, taken: false });
+      }
+    }
+
+    for (let x = 6; x < widthTiles - 6; x += 3) {
+      if (ground[x] && rand() < 0.4) {
+        coins.push({ x: x * TILE + TILE / 2, y: groundRow * TILE - 30, r: 10, taken: false });
+      }
+    }
+
+    if ((currentDifficulty === "hard" || currentDifficulty === "insane") && !boss && levelNum > 2) {
+      for (let x = 8; x < widthTiles - 8; x += 7) {
+        if (ground[x] && rand() < 0.4) {
+          hazards.push({ x: x * TILE, y: (groundRow - 1) * TILE, w: TILE, h: TILE });
+        }
+      }
+    }
+
+    if (!boss) {
+      const crateCount = Math.min(1 + Math.floor(levelNum / 15), 4);
+      const crateTypes = ["apple", "apple", "banana", "mango", "durian"];
+      let cPlaced = 0, cAttempts = 0;
+      while (cPlaced < crateCount && cAttempts < 100) {
+        cAttempts++;
+        const cx2 = 5 + Math.floor(rand() * (widthTiles - 11));
+        if (!ground[cx2]) continue;
+        const type = crateTypes[Math.floor(rand() * crateTypes.length)];
+        crates.push({ x: cx2 * TILE, y: (groundRow - 1) * TILE, w: TILE - 4, h: TILE - 4, type, broken: false });
+        cPlaced++;
+      }
+    }
+
+    if (boss) {
+      const bossX = (widthTiles - 8) * TILE;
+      const bossHealth = 3 + Math.floor(levelNum / 25);
+      levelBoss = {
+        x: bossX, y: (groundRow - 2) * TILE, w: TILE * 1.6, h: TILE * 1.6,
+        baseX: bossX, range: 140, dir: -1,
+        speed: 1.1 * diff.enemySpeedMul,
+        alive: true, isBoss: true, health: bossHealth, maxHealth: bossHealth,
+        type: biome.enemyType, color: biome.enemyColor,
+        flyPhase: 0, baseY: (groundRow - 2) * TILE,
+        flashTimer: 0
+      };
+      enemies.push(levelBoss);
+    } else {
+      const enemyCount = Math.min(2 + Math.floor(levelNum / 4) * diff.enemyCountMul, 14);
+      let placed = 0, attempts = 0;
+      while (placed < enemyCount && attempts < 200) {
+        attempts++;
+        const ex = 8 + Math.floor(rand() * (widthTiles - 14));
+        if (!ground[ex]) continue;
+        enemies.push({
+          x: ex * TILE, y: (groundRow - 1) * TILE, w: TILE - 8, h: TILE - 8,
+          baseX: ex * TILE, range: 90 + rand() * 60,
+          dir: rand() < 0.5 ? 1 : -1,
+          speed: (0.7 + rand() * 0.6) * diff.enemySpeedMul,
+          alive: true, isBoss: false,
+          type: biome.enemyType, color: biome.enemyColor,
+          flyPhase: rand() * Math.PI * 2,
+          baseY: (groundRow - 1) * TILE
+        });
+        placed++;
+      }
+    }
+
+    flag = {
+      x: (widthTiles - 3) * TILE, y: (groundRow - 3) * TILE, w: TILE * 1.4, h: TILE * 3,
+      active: !boss,
+      isHouse: levelNum === TOTAL_LEVELS
+    };
+
+    player.x = 2 * TILE;
+    player.y = groundRow * TILE - player.h;
+    player.vx = 0;
+    player.vy = 0;
+
+    updateMaxLevel(levelNum);
+  }
+
+  // ===== Pemain =====
+  const GRAVITY = 0.6;
+  const JUMP_VELOCITY = -12.5;
+  const MOVE_SPEED = 3.6;
+
+  const player = {
+    x: 0, y: 0, w: 28, h: 32, vx: 0, vy: 0, onGround: false, facing: 1,
+    powerUp: null, shielded: false, shieldTimer: 0, grown: false
+  };
+
+  let lives = 3;
+  let cameraX = 0;
+  let running = false;
+  let inputLeft = false, inputRight = false, inputJumpQueued = false;
+  let inputSeedQueued = false, inputUseQueued = false;
+
+  // ===== Transisi portal antar-level (animasi portal menutup + karakter tersedot) =====
+  const TRANSITION_DURATION = 46; // frame (~0.75 detik @60fps)
+  let transitioning = false;
+  let transitionTimer = 0;
+  let transitionProgress = 0; // 0 -> 1
+  let transitionFlagCenter = null;
+  let transitionStartPlayer = null;
+  let transitionSpin = 0;
+  let transitionParticles = [];
+
+  function startLevelTransition() {
+    if (transitioning || !flag) return;
+    transitioning = true;
+    transitionTimer = TRANSITION_DURATION;
+    transitionProgress = 0;
+    transitionSpin = 0;
+    transitionFlagCenter = { x: flag.x + flag.w / 2, y: flag.y + flag.h * 0.55 };
+    transitionStartPlayer = { x: player.x, y: player.y };
+    flag.active = false; // portal mulai menutup, tidak bisa dipicu ulang
+    player.vx = 0; player.vy = 0;
+    transitionParticles = [];
+    for (let i = 0; i < 14; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      transitionParticles.push({
+        ang, dist: 30 + Math.random() * 40,
+        size: 2 + Math.random() * 3,
+        speed: 0.03 + Math.random() * 0.05
+      });
+    }
+  }
+
+  function updateLevelTransition() {
+    transitionTimer--;
+    const t = 1 - Math.max(transitionTimer, 0) / TRANSITION_DURATION; // 0 -> 1
+    transitionProgress = t;
+    const easeIn = t * t;
+    transitionSpin += 0.5 + t * 0.9;
+
+    // karakter tersedot menuju pusat portal sambil menyusut & berputar
+    player.x = transitionStartPlayer.x + (transitionFlagCenter.x - player.w / 2 - transitionStartPlayer.x) * easeIn;
+    player.y = transitionStartPlayer.y + (transitionFlagCenter.y - player.h / 2 - transitionStartPlayer.y) * easeIn;
+
+    for (const p of transitionParticles) {
+      p.dist -= p.dist * p.speed;
+      p.ang += 0.15;
+    }
+
+    cameraX = player.x - canvas.width / 2.5;
+    if (cameraX < 0) cameraX = 0;
+    const maxCam = levelWidthPx - canvas.width;
+    if (cameraX > maxCam) cameraX = Math.max(maxCam, 0);
+
+    if (transitionTimer <= 0) {
+      transitioning = false;
+      transitionProgress = 0;
+      nextLevelCutscene();
+    }
+  }
+
+  function resetLivesForRun() {
+    lives = DIFFICULTIES[currentDifficulty].lives;
+    document.getElementById("livesText").textContent = lives;
+  }
+
+  // ===== Kekuatan buah =====
+  function growPlayer() {
+    if (player.grown) return;
+    player.grown = true;
+    const dw = 10, dh = 10;
+    player.x -= dw / 2;
+    player.y -= dh;
+    player.w += dw;
+    player.h += dh;
+  }
+  function shrinkPlayer() {
+    if (!player.grown) return;
+    player.grown = false;
+    const dw = 10, dh = 10;
+    player.w -= dw;
+    player.h -= dh;
+    player.y += dh;
+    player.x += dw / 2;
+  }
+
+  function fireSeed() {
+    if (seedCooldown > 0) return;
+    seedCooldown = SEED_COOLDOWN_MAX;
+    const dir = player.facing;
+    seeds.push({
+      x: dir > 0 ? player.x + player.w : player.x - 10,
+      y: player.y + player.h / 2 - 4,
+      vx: dir * 9, w: 8, h: 8, dir
+    });
+  }
+
+  function useHeldPowerUp() {
+    if (!player.powerUp) return;
+    const dir = player.facing;
+    if (player.powerUp === "banana") {
+      bananas.push({
+        x: dir > 0 ? player.x + player.w : player.x - 14,
+        y: player.y + player.h / 2 - 6,
+        vx: dir * 6, w: 14, h: 12, dir, traveled: 0
+      });
+    } else if (player.powerUp === "mango") {
+      mangoBombs.push({
+        x: dir > 0 ? player.x + player.w + 10 : player.x - 10,
+        y: player.y + player.h - 14,
+        fuse: MANGO_FUSE
+      });
+    }
+    player.powerUp = null;
+    updatePowerupHud();
+  }
+
+  function applyCrateEffect(type) {
+    if (type === "apple") {
+      lives++;
+      document.getElementById("livesText").textContent = lives;
+    } else if (type === "durian") {
+      growPlayer();
+      player.shielded = true;
+      player.shieldTimer = SHIELD_DURATION;
+    } else {
+      player.powerUp = type; // banana atau mango
+    }
+    updatePowerupHud();
+  }
+
+  function updatePowerupHud() {
+    const el = document.getElementById("powerupIcon");
+    if (!el) return;
+    let txt = "";
+    if (player.shielded) txt += "🛡️ ";
+    if (player.powerUp) txt += FRUIT_INFO[player.powerUp].emoji;
+    el.textContent = txt;
+  }
+
+  // ===== Kontrol =====
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") inputLeft = true;
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") inputRight = true;
+    if (e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W") inputJumpQueued = true;
+    if (e.key === "x" || e.key === "X") inputSeedQueued = true;
+    if (e.key === "c" || e.key === "C") inputUseQueued = true;
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") inputLeft = false;
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") inputRight = false;
+  });
+
+  function bindHold(el, onDown, onUp) {
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); onDown(); });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); onUp(); });
+    el.addEventListener("mousedown", onDown);
+    el.addEventListener("mouseup", onUp);
+  }
+  bindHold(document.getElementById("leftBtn"), () => inputLeft = true, () => inputLeft = false);
+  bindHold(document.getElementById("rightBtn"), () => inputRight = true, () => inputRight = false);
+  document.getElementById("jumpBtn").addEventListener("touchstart", (e) => { e.preventDefault(); inputJumpQueued = true; });
+  document.getElementById("jumpBtn").addEventListener("mousedown", () => inputJumpQueued = true);
+  document.getElementById("seedBtn").addEventListener("touchstart", (e) => { e.preventDefault(); inputSeedQueued = true; });
+  document.getElementById("seedBtn").addEventListener("mousedown", () => inputSeedQueued = true);
+  document.getElementById("useBtn").addEventListener("touchstart", (e) => { e.preventDefault(); inputUseQueued = true; });
+  document.getElementById("useBtn").addEventListener("mousedown", () => inputUseQueued = true);
+
+  function isTouchDevice() {
+    return ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+  }
+
+  function updateHud() {
+    document.getElementById("levelHud").textContent = "Level " + (currentLevelIndex + 1) + "/" + TOTAL_LEVELS + " — " + currentBiome.name;
+    document.getElementById("coinsText").textContent = coinBank;
+    bossHint.style.display = (levelBoss && levelBoss.alive) ? "block" : "none";
+  }
+  const bossHint = document.getElementById("bossHint");
+
+  function showGameScreen() {
+    document.getElementById("homeScreen").classList.add("hidden");
+    document.getElementById("panelScreen").classList.remove("show");
+    if (isTouchDevice()) document.getElementById("touchControls").style.display = "flex";
+  }
+
+  // ===== Mulai run dari level tertentu (index 0-based) =====
+  function beginRun(levelIndex) {
+    currentLevelIndex = levelIndex;
+    resetLivesForRun();
+    player.powerUp = null;
+    if (player.grown) shrinkPlayer();
+    player.shielded = false;
+    player.shieldTimer = 0;
+    updatePowerupHud();
+
+    // Aturan: setiap kali MEMILIH level (mulai run baru) di mode Insane, nyawa langsung berkurang 1
+    if (currentDifficulty === "insane") {
+      lives = Math.max(lives - 1, 0);
+      document.getElementById("livesText").textContent = lives;
+    }
+
+    generateLevel(currentLevelIndex + 1);
+    cameraX = 0;
+    showGameScreen();
+    updateHud();
+
+    if (lives <= 0) {
+      gameOverScreen();
+      return;
+    }
+    running = true;
+  }
+
+  function goNextLevel() {
+    currentLevelIndex++;
+    generateLevel(currentLevelIndex + 1);
+    cameraX = 0;
+    showGameScreen();
+    updateHud();
+    running = true;
+  }
+
+  function nextLevelCutscene() {
+    running = false;
+    if (currentLevelIndex + 1 >= TOTAL_LEVELS) {
+      showEndPanel("🏡 Akhirnya Pulang!", "Setelah menjelajah hutan, gua, gurun, salju, dan gunung api, kamu akhirnya menemukan rumah kayumu tersembunyi di tengah hutan lebat! Petualangan " + TOTAL_LEVELS + " level di tingkat " + DIFFICULTIES[currentDifficulty].label + " selesai.", true);
+      return;
+    }
+    const nextNum = currentLevelIndex + 2;
+    showEndPanel("🕳️ Level " + (currentLevelIndex + 1) + " Selesai!", "Masuk gua menuju Level " + nextNum + " (" + getBiome(nextNum).name + ")...", false, "▶ Lanjut", goNextLevel);
+  }
+
+  function gameOverScreen() {
+    running = false;
+    showEndPanel("💀 Game Over", "Nyawa habis di Level " + (currentLevelIndex + 1) + ".", true);
+  }
+
+  function showEndPanel(title, sub, showCheckpointList, btnLabel, btnAction) {
+    document.getElementById("panelTitle").textContent = title;
+    document.getElementById("panelSub").textContent = sub;
+    const body = document.getElementById("panelBody");
+    body.innerHTML = "";
+    const actions = document.getElementById("panelActions");
+    actions.innerHTML = "";
+
+    // Background panel mengikuti biome level tempat kita mati/menang, biar tidak polos hitam
+    setPanelBiomeBackground(getBiome(currentLevelIndex + 1));
+
+    if (showCheckpointList) {
+      // Mati / tamat: tampilkan pilihan checkpoint, bukan otomatis ulang dari level yang sama
+      const grid = document.createElement("div");
+      grid.className = "checkpointGrid";
+      for (const lvl of getCheckpointLevels(maxLevelReached)) {
+        const btn = document.createElement("button");
+        const boss = isBossLevelNum(lvl);
+        btn.className = "cpBtn" + (boss ? " boss" : "");
+        btn.innerHTML = "Lv " + lvl + (boss ? " 👹" : " 🚪") +
+          "<br><span style='font-size:9px;opacity:0.8;'>" + getBiome(lvl).name + "</span>";
+        btn.onclick = () => beginRun(lvl - 1);
+        grid.appendChild(btn);
+      }
+      body.appendChild(grid);
+
+      const homeBtn = document.createElement("button");
+      homeBtn.className = "woodBtn small";
+      homeBtn.textContent = "🏠 Beranda";
+      homeBtn.onclick = () => {
+        document.getElementById("panelScreen").classList.remove("show");
+        document.getElementById("panelScreen").style.background = "";
+        document.getElementById("homeScreen").classList.remove("hidden");
+        document.getElementById("touchControls").style.display = "none";
+        document.getElementById("homeCoins").textContent = coinBank;
+      };
+      actions.appendChild(homeBtn);
+    } else {
+      const btn = document.createElement("button");
+      btn.className = "woodBtn green";
+      btn.textContent = btnLabel;
+      btn.onclick = btnAction;
+      actions.appendChild(btn);
+    }
+
+    document.getElementById("panelScreen").classList.add("show");
+    document.getElementById("touchControls").style.display = "none";
+  }
+
+  function loseLife() {
+    lives--;
+    document.getElementById("livesText").textContent = lives;
+    if (lives <= 0) {
+      gameOverScreen();
+      return;
+    }
+    generateLevel(currentLevelIndex + 1);
+    cameraX = 0;
+    updateHud();
+  }
+
+  // ===== Fisika & tabrakan =====
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function update() {
+    if (!running) return;
+
+    if (transitioning) { updateLevelTransition(); return; }
+
+    if (inputLeft) { player.vx = -MOVE_SPEED; player.facing = -1; }
+    else if (inputRight) { player.vx = MOVE_SPEED; player.facing = 1; }
+    else { player.vx = 0; }
+
+    if (inputJumpQueued) {
+      if (player.onGround) { player.vy = JUMP_VELOCITY; player.onGround = false; }
+      inputJumpQueued = false;
+    }
+
+    if (seedCooldown > 0) seedCooldown--;
+    if (inputSeedQueued) { fireSeed(); inputSeedQueued = false; }
+    if (inputUseQueued) { useHeldPowerUp(); inputUseQueued = false; }
+
+    if (player.shieldTimer > 0) {
+      player.shieldTimer--;
+      if (player.shieldTimer <= 0) {
+        player.shielded = false;
+        shrinkPlayer();
+        updatePowerupHud();
+      }
+    }
+
+    player.vy += GRAVITY;
+    if (player.vy > 15) player.vy = 15;
+
+    player.x += player.vx;
+    for (const p of platforms) {
+      if (rectsOverlap(player, p)) {
+        if (player.vx > 0) player.x = p.x - player.w;
+        else if (player.vx < 0) player.x = p.x + p.w;
+      }
+    }
+
+    player.onGround = false;
+    player.y += player.vy;
+    for (const p of platforms) {
+      if (rectsOverlap(player, p)) {
+        if (player.vy > 0) { player.y = p.y - player.h; player.vy = 0; player.onGround = true; }
+        else if (player.vy < 0) { player.y = p.y + p.h; player.vy = 0; }
+      }
+    }
+
+    if (player.y > canvas.height + 200) { loseLife(); return; }
+
+    for (const hz of hazards) {
+      if (rectsOverlap(player, hz)) { loseLife(); return; }
+    }
+
+    for (const cr of crates) {
+      if (cr.broken) continue;
+      if (rectsOverlap(player, cr)) {
+        cr.broken = true;
+        applyCrateEffect(cr.type);
+      }
+    }
+
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      e.x += e.dir * e.speed;
+      if (e.x > e.baseX + e.range || e.x < e.baseX - 10) e.dir *= -1;
+      if (e.type === "bat") { e.flyPhase += 0.06; e.y = e.baseY - 24 + Math.sin(e.flyPhase) * 22; }
+      if (e.flashTimer > 0) e.flashTimer--;
+
+      if (rectsOverlap(player, e)) {
+        const playerBottom = player.y + player.h;
+        const stomping = player.vy > 0 && (playerBottom - e.y) < 20;
+        if (stomping) {
+          if (e.isBoss) {
+            e.health--;
+            e.flashTimer = 12;
+            player.vy = JUMP_VELOCITY * 0.55;
+            if (e.health <= 0) { e.alive = false; flag.active = true; bossHint.style.display = "none"; }
+          } else {
+            e.alive = false;
+            player.vy = JUMP_VELOCITY * 0.6;
+          }
+        } else if (player.shielded) {
+          if (e.isBoss) {
+            e.health--;
+            e.flashTimer = 12;
+            if (e.health <= 0) { e.alive = false; flag.active = true; bossHint.style.display = "none"; }
+          } else {
+            e.alive = false;
+          }
+        } else {
+          loseLife();
+          return;
+        }
+      }
+    }
+
+    for (let i = seeds.length - 1; i >= 0; i--) {
+      const s = seeds[i];
+      s.x += s.vx;
+      let hitS = false;
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        if (rectsOverlap(s, e)) {
+          if (e.isBoss) {
+            e.health--; e.flashTimer = 10;
+            if (e.health <= 0) { e.alive = false; flag.active = true; bossHint.style.display = "none"; }
+          } else { e.alive = false; }
+          hitS = true;
+          break;
+        }
+      }
+      if (hitS || s.x < cameraX - 60 || s.x > cameraX + canvas.width + 60) seeds.splice(i, 1);
+    }
+
+    for (let i = bananas.length - 1; i >= 0; i--) {
+      const b = bananas[i];
+      b.x += b.vx;
+      b.traveled += Math.abs(b.vx);
+      let hitB = false;
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        if (rectsOverlap(b, e)) {
+          if (e.isBoss) {
+            e.health--; e.flashTimer = 10;
+            if (e.health <= 0) { e.alive = false; flag.active = true; bossHint.style.display = "none"; }
+          } else { e.alive = false; }
+          hitB = true;
+          break;
+        }
+      }
+      if (hitB || b.traveled > BANANA_RANGE) bananas.splice(i, 1);
+    }
+
+    for (let i = mangoBombs.length - 1; i >= 0; i--) {
+      const m = mangoBombs[i];
+      m.fuse--;
+      if (m.fuse <= 0) {
+        explosions.push({ x: m.x, y: m.y, r: 10, maxR: MANGO_RADIUS, life: 18 });
+        for (const e of enemies) {
+          if (!e.alive) continue;
+          const dx = (e.x + e.w / 2) - m.x, dy = (e.y + e.h / 2) - m.y;
+          if (Math.sqrt(dx * dx + dy * dy) < MANGO_RADIUS) {
+            if (e.isBoss) {
+              e.health--; e.flashTimer = 10;
+              if (e.health <= 0) { e.alive = false; flag.active = true; bossHint.style.display = "none"; }
+            } else { e.alive = false; }
+          }
+        }
+        mangoBombs.splice(i, 1);
+      }
+    }
+
+    for (let i = explosions.length - 1; i >= 0; i--) {
+      const ex2 = explosions[i];
+      ex2.life--;
+      ex2.r += (ex2.maxR - ex2.r) * 0.3;
+      if (ex2.life <= 0) explosions.splice(i, 1);
+    }
+
+    for (const c of coins) {
+      if (c.taken) continue;
+      const dx = (player.x + player.w / 2) - c.x;
+      const dy = (player.y + player.h / 2) - c.y;
+      if (Math.sqrt(dx * dx + dy * dy) < c.r + 16) {
+        c.taken = true;
+        addCoins(1);
+      }
+    }
+
+    if (flag && flag.active && rectsOverlap(player, flag)) { startLevelTransition(); return; }
+
+    if (player.x < 0) player.x = 0;
+
+    cameraX = player.x - canvas.width / 2.5;
+    if (cameraX < 0) cameraX = 0;
+    const maxCam = levelWidthPx - canvas.width;
+    if (cameraX > maxCam) cameraX = Math.max(maxCam, 0);
+  }
+
+  // ===== Render pemain =====
+  function drawPlayer() {
+    const px = player.x - cameraX;
+    const py = player.y;
+    const f = player.facing;
+    const cx = px + player.w / 2;
+    const cyMid = py + player.h / 2;
+
+    if (transitioning) {
+      const shrink = Math.max(1 - transitionProgress * 1.05, 0.02);
+      ctx.save();
+      ctx.globalAlpha = Math.max(1 - transitionProgress * 1.15, 0);
+      ctx.translate(cx, cyMid);
+      ctx.rotate(transitionSpin);
+      ctx.scale(shrink, shrink);
+      ctx.translate(-cx, -cyMid);
+      drawPlayerSprite(px, py, f, cx);
+      ctx.restore();
+      return;
+    }
+    drawPlayerSprite(px, py, f, cx);
+  }
+
+  function drawPlayerSprite(px, py, f, cx) {
+    ctx.fillStyle = "#e8792b";
+    ctx.beginPath();
+    ctx.moveTo(cx - f * (player.w / 2 - 4), py + 14);
+    ctx.quadraticCurveTo(cx - f * (player.w / 2 + 14), py + 6, cx - f * (player.w / 2 + 10), py - 4);
+    ctx.quadraticCurveTo(cx - f * (player.w / 2 + 4), py + 8, cx - f * (player.w / 2 - 2), py + 16);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(cx - f * (player.w / 2 + 10), py - 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#c9631f";
+    ctx.fillRect(px + 3, py + player.h - 5, 6, 5);
+    ctx.fillRect(px + player.w - 9, py + player.h - 5, 6, 5);
+
+    ctx.fillStyle = "#e8792b";
+    ctx.beginPath();
+    ctx.ellipse(cx, py + player.h / 2 + 4, player.w / 2, player.h / 2.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#fff6ec";
+    ctx.beginPath();
+    ctx.ellipse(cx, py + player.h / 2 + 8, player.w / 3.2, player.h / 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#e8792b";
+    ctx.beginPath();
+    ctx.arc(cx + f * 2, py + 6, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, py - 2); ctx.lineTo(cx - 10, py - 13); ctx.lineTo(cx - 2, py - 5); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 7, py - 2); ctx.lineTo(cx + 10, py - 13); ctx.lineTo(cx + 2, py - 5); ctx.fill();
+    ctx.fillStyle = "#3a2417";
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, py - 4); ctx.lineTo(cx - 8, py - 10); ctx.lineTo(cx - 3, py - 6); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 6, py - 4); ctx.lineTo(cx + 8, py - 10); ctx.lineTo(cx + 3, py - 6); ctx.fill();
+
+    ctx.fillStyle = "#fff6ec";
+    ctx.beginPath();
+    ctx.ellipse(cx + f * 8, py + 9, 6, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#2a1810";
+    ctx.beginPath();
+    ctx.arc(cx + f * 12, py + 8, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + f * 4, py + 4, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Aksesoris topi (dari toko)
+    if (equippedAccessory && equippedAccessory !== "none") {
+      const item = SHOP_ITEMS.find(it => it.id === equippedAccessory);
+      if (item) {
+        ctx.fillStyle = item.color;
+        ctx.beginPath();
+        ctx.ellipse(cx + f * 2, py - 4, 10, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(cx + f * 2 - 6, py - 9, 12, 6);
+      }
+    }
+
+    if (player.shielded) {
+      ctx.strokeStyle = "rgba(110,231,245,0.9)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(cx, py + player.h / 2, player.w / 1.3, player.h / 1.4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Rumah kayu — tujuan akhir di level terakhir, tempat karakter kita akhirnya pulang
+  function drawHouseGoal(fx, topY, w, h) {
+    const baseY = topY + h;      // level tanah
+    const wallH = h * 0.52;
+    const wallTop = baseY - wallH;
+    const roofH = h * 0.5;
+    const wallW = w * 1.35;
+    const wallX = fx - (wallW - w) / 2;
+
+    // bayangan di tanah
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(fx + w / 2, baseY + 4, wallW / 1.5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // dinding kayu (papan horizontal)
+    ctx.fillStyle = "#8b5a2b";
+    ctx.fillRect(wallX, wallTop, wallW, wallH);
+    ctx.strokeStyle = "#5a3a1a";
+    ctx.lineWidth = 1.4;
+    for (let ly = wallTop + 6; ly < baseY - 1; ly += 7) {
+      ctx.beginPath();
+      ctx.moveTo(wallX, ly);
+      ctx.lineTo(wallX + wallW, ly);
+      ctx.stroke();
+    }
+    ctx.strokeRect(wallX, wallTop, wallW, wallH);
+
+    // atap segitiga
+    ctx.fillStyle = "#6b2b20";
+    ctx.beginPath();
+    ctx.moveTo(wallX - 8, wallTop);
+    ctx.lineTo(wallX + wallW / 2, wallTop - roofH);
+    ctx.lineTo(wallX + wallW + 8, wallTop);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#3a170f";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // cerobong asap
+    ctx.fillStyle = "#5a3a1a";
+    ctx.fillRect(wallX + wallW * 0.68, wallTop - roofH * 0.62, wallW * 0.12, roofH * 0.66);
+    ctx.fillStyle = "rgba(220,220,220,0.55)";
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(wallX + wallW * 0.74 + i * 2, wallTop - roofH * 0.7 - i * 10, 4 - i * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // pintu
+    const doorW = wallW * 0.3, doorH = wallH * 0.65;
+    ctx.fillStyle = "#4a2c14";
+    ctx.fillRect(wallX + wallW / 2 - doorW / 2, baseY - doorH, doorW, doorH);
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath();
+    ctx.arc(wallX + wallW / 2 + doorW / 2 - 4, baseY - doorH / 2, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // jendela dengan cahaya hangat
+    const winS = wallW * 0.22;
+    ctx.fillStyle = "#ffd166";
+    ctx.fillRect(wallX + wallW * 0.14, wallTop + wallH * 0.18, winS, winS);
+    ctx.strokeStyle = "#4a2c14";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(wallX + wallW * 0.14, wallTop + wallH * 0.18, winS, winS);
+    ctx.beginPath();
+    ctx.moveTo(wallX + wallW * 0.14 + winS / 2, wallTop + wallH * 0.18);
+    ctx.lineTo(wallX + wallW * 0.14 + winS / 2, wallTop + wallH * 0.18 + winS);
+    ctx.moveTo(wallX + wallW * 0.14, wallTop + wallH * 0.18 + winS / 2);
+    ctx.lineTo(wallX + wallW * 0.14 + winS, wallTop + wallH * 0.18 + winS / 2);
+    ctx.stroke();
+  }
+
+  function drawCrate(cr) {
+    if (cr.broken) return;
+    const x = cr.x - cameraX, y = cr.y;
+    ctx.fillStyle = "#8b5a2b";
+    ctx.fillRect(x, y, cr.w, cr.h);
+    ctx.strokeStyle = "#5a3a1a";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, cr.w, cr.h);
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x + cr.w, y + cr.h);
+    ctx.moveTo(x + cr.w, y); ctx.lineTo(x, y + cr.h);
+    ctx.stroke();
+    ctx.font = "20px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(FRUIT_INFO[cr.type].emoji, x + cr.w / 2, y + cr.h / 2);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
+  }
+
+  function drawSeed(s) {
+    ctx.fillStyle = "#8b5a2b";
+    ctx.beginPath();
+    ctx.ellipse(s.x - cameraX + s.w / 2, s.y + s.h / 2, s.w / 2, s.h / 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawBanana(b) {
+    ctx.save();
+    ctx.translate(b.x - cameraX + b.w / 2, b.y + b.h / 2);
+    if (b.dir < 0) ctx.scale(-1, 1);
+    ctx.fillStyle = "#ffe135";
+    ctx.beginPath();
+    ctx.moveTo(-7, 4);
+    ctx.quadraticCurveTo(0, -8, 7, 4);
+    ctx.quadraticCurveTo(0, 2, -7, 4);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawMangoBomb(m) {
+    const x = m.x - cameraX, y = m.y;
+    ctx.fillStyle = "#ffa500";
+    ctx.beginPath();
+    ctx.ellipse(x, y, 12, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#c9911f";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    if (Math.floor(m.fuse / 5) % 2 === 0) {
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(x, y - 12, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawExplosion(ex2) {
+    const x = ex2.x - cameraX, y = ex2.y;
+    ctx.fillStyle = "rgba(255,140,0," + Math.max(ex2.life / 18, 0) + ")";
+    ctx.beginPath();
+    ctx.arc(x, y, ex2.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawEnemy(e) {
+    const ex = e.x - cameraX;
+    const ey = e.y;
+    const w = e.w, h = e.h;
+    const cx = ex + w / 2, cy = ey + h / 2;
+    const flashing = e.flashTimer > 0;
+    const baseColor = flashing ? "#ffffff" : e.color;
+
+    if (e.type === "bat") {
+      ctx.fillStyle = baseColor;
+      const wingFlap = Math.sin(e.flyPhase * 3) * 8;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); ctx.lineTo(cx - w / 2 - 4, cy - wingFlap); ctx.lineTo(cx - w / 4, cy + 4); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); ctx.lineTo(cx + w / 2 + 4, cy - wingFlap); ctx.lineTo(cx + w / 4, cy + 4); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, w / 3.2, h / 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ff3355";
+      ctx.beginPath();
+      ctx.arc(cx - 3, cy - 2, 2, 0, Math.PI * 2); ctx.arc(cx + 3, cy - 2, 2, 0, Math.PI * 2); ctx.fill();
+    } else if (e.type === "scorpion") {
+      ctx.fillStyle = baseColor;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 3, w / 2, h / 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx - w / 2, cy - 2, 6, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + w / 2, cy - 2, 6, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - h / 3);
+      ctx.quadraticCurveTo(cx + 4, cy - h, cx - 6, cy - h - 4);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      for (let i = -1; i <= 1; i += 2) {
+        ctx.beginPath();
+        ctx.moveTo(cx + i * w / 4, cy + h / 4);
+        ctx.lineTo(cx + i * w / 2, cy + h / 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#222";
+      ctx.beginPath();
+      ctx.arc(cx - 4, cy - 4, 1.6, 0, Math.PI * 2); ctx.arc(cx + 4, cy - 4, 1.6, 0, Math.PI * 2); ctx.fill();
+    } else if (e.type === "polarbear") {
+      const faceDir = e.dir > 0 ? 1 : -1;
+
+      // kaki belakang
+      ctx.fillStyle = "#dbe7ee";
+      ctx.beginPath();
+      ctx.ellipse(cx - faceDir * (w / 3), cy + h / 2 - 4, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+
+      // badan gempal
+      ctx.fillStyle = baseColor;
+      ctx.strokeStyle = "#9fc3d9";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 2, w / 1.9, h / 2.1, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // telinga bulat
+      ctx.fillStyle = baseColor;
+      ctx.strokeStyle = "#9fc3d9"; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(cx - w / 4, cy - h / 2 + 2, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx + w / 4, cy - h / 2 + 2, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+      // kepala
+      ctx.beginPath();
+      ctx.ellipse(cx + faceDir * (w / 6), cy - h / 5, w / 2.6, h / 3, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // moncong
+      ctx.fillStyle = flashing ? "#ffffff" : "#f6fbff";
+      ctx.beginPath();
+      ctx.ellipse(cx + faceDir * (w / 2.4), cy - h / 6, w / 6, h / 7, 0, 0, Math.PI * 2); ctx.fill();
+
+      // hidung & mata
+      ctx.fillStyle = "#2a2a2a";
+      ctx.beginPath();
+      ctx.arc(cx + faceDir * (w / 1.9), cy - h / 6, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx + faceDir * (w / 5), cy - h / 3, 1.8, 0, Math.PI * 2); ctx.fill();
+
+      // cakar depan
+      ctx.fillStyle = "#dbe7ee";
+      ctx.beginPath();
+      ctx.ellipse(cx + faceDir * (w / 3), cy + h / 2 - 3, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      const faceDir = e.dir > 0 ? 1 : -1;
+      ctx.fillStyle = "#5a3820";
+      ctx.beginPath();
+      const tailDir = -faceDir;
+      ctx.moveTo(cx + tailDir * (w / 2 - 2), cy + 4);
+      ctx.quadraticCurveTo(cx + tailDir * (w / 2 + 10), cy - 6, cx + tailDir * (w / 2 + 6), cy - 12);
+      ctx.quadraticCurveTo(cx + tailDir * (w / 2 + 2), cy - 2, cx + tailDir * (w / 2 - 2), cy + 6);
+      ctx.fill();
+
+      ctx.fillStyle = baseColor;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = "#5a3820";
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cx + i * (w / 6), cy - h / 2 + 4);
+        ctx.lineTo(cx + i * (w / 6) - 3, cy - h / 2 - 7);
+        ctx.lineTo(cx + i * (w / 6) + 3, cy - h / 2 - 7);
+        ctx.closePath(); ctx.fill();
+      }
+
+      ctx.fillStyle = flashing ? "#ffffff" : "#d8a878";
+      ctx.beginPath();
+      ctx.ellipse(cx + faceDir * (w / 4), cy + 2, w / 4.2, h / 3, 0, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = "#222";
+      ctx.beginPath();
+      ctx.arc(cx + faceDir * (w / 4 + 2), cy - 2, 2.4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    if (e.isBoss) {
+      ctx.fillStyle = "#ffd166";
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy - h / 2 - 6); ctx.lineTo(cx - 5, cy - h / 2 - 16); ctx.lineTo(cx, cy - h / 2 - 6);
+      ctx.lineTo(cx + 5, cy - h / 2 - 16); ctx.lineTo(cx + 10, cy - h / 2 - 6); ctx.closePath(); ctx.fill();
+
+      const barW = w;
+      ctx.fillStyle = "#3a1414";
+      ctx.fillRect(cx - barW / 2, ey - 14, barW, 5);
+      ctx.fillStyle = "#ff5577";
+      ctx.fillRect(cx - barW / 2, ey - 14, barW * (e.health / e.maxHealth), 5);
+    }
+  }
+
+  function render() {
+    ctx.fillStyle = currentBiome.sky;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    for (let i = 0; i < 6; i++) {
+      const cxp = (i * 260 - cameraX * 0.3) % (canvas.width + 300);
+      ctx.beginPath();
+      ctx.ellipse(cxp, 50 + (i % 2) * 26, 28, 16, 0, 0, Math.PI * 2);
+      ctx.ellipse(cxp + 22, 46 + (i % 2) * 26, 20, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const p of platforms) {
+      ctx.fillStyle = currentBiome.groundBase;
+      ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
+      ctx.fillStyle = currentBiome.ground;
+      ctx.fillRect(p.x - cameraX, p.y, p.w, 8);
+    }
+
+    for (const cr of crates) drawCrate(cr);
+
+    ctx.fillStyle = "#d9534f";
+    for (const hz of hazards) {
+      const hx = hz.x - cameraX;
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        ctx.moveTo(hx + i * 10, hz.y + hz.h);
+        ctx.lineTo(hx + i * 10 + 5, hz.y + hz.h - 16);
+        ctx.lineTo(hx + i * 10 + 10, hz.y + hz.h);
+      }
+      ctx.fill();
+    }
+
+    for (const c of coins) {
+      if (c.taken) continue;
+      ctx.fillStyle = "#ffd166";
+      ctx.beginPath(); ctx.arc(c.x - cameraX, c.y, c.r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#c9911f"; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    if (flag && flag.isHouse) {
+      const fx = flag.x - cameraX;
+      drawHouseGoal(fx, flag.y, flag.w, flag.h);
+
+      if (transitioning) {
+        // cahaya hangat pintu rumah menyala saat karakter mendekat & masuk
+        const glowA = transitionProgress;
+        ctx.fillStyle = "rgba(255,209,102," + (glowA * 0.55) + ")";
+        ctx.beginPath();
+        ctx.ellipse(fx + flag.w / 2, flag.y + flag.h - flag.h * 0.18, 22 * (1 - glowA * 0.4), 26 * (1 - glowA * 0.4), 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(255,214,102,0.85)";
+        for (const p of transitionParticles) {
+          const px2 = transitionFlagCenter.x - cameraX + Math.cos(p.ang) * p.dist;
+          const py2 = transitionFlagCenter.y + Math.sin(p.ang) * p.dist * 0.6;
+          ctx.beginPath();
+          ctx.arc(px2, py2, Math.max(p.size * (1 - transitionProgress * 0.5), 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (transitionProgress > 0.82) {
+          const flashA = (transitionProgress - 0.82) / 0.18;
+          ctx.fillStyle = "rgba(255,255,255," + (flashA * 0.6) + ")";
+          ctx.beginPath();
+          ctx.arc(transitionFlagCenter.x - cameraX, transitionFlagCenter.y, 50 * flashA, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } else if (flag) {
+      const fx = flag.x - cameraX;
+      const portalScale = transitioning ? Math.max(1 - transitionProgress, 0.02) : 1;
+      ctx.fillStyle = "#1a1a1a";
+      ctx.beginPath();
+      ctx.ellipse(fx + flag.w / 2, flag.y + flag.h, flag.w / 1.6, flag.h * 0.7, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = "#5a5a63";
+      ctx.fillRect(fx - 4, flag.y + flag.h - 6, flag.w + 8, 10);
+
+      ctx.save();
+      ctx.translate(fx + flag.w / 2, flag.y + flag.h);
+      ctx.scale(portalScale, portalScale);
+      ctx.rotate(transitioning ? transitionProgress * 4 : 0);
+      ctx.fillStyle = flag.active ? "rgba(110,231,245,0.5)" : "rgba(255,85,119,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, flag.w / 2.4, flag.h * 0.5, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.restore();
+
+      if (transitioning) {
+        // pusaran partikel tersedot ke dalam portal
+        ctx.fillStyle = "rgba(255,214,102,0.85)";
+        for (const p of transitionParticles) {
+          const px2 = transitionFlagCenter.x - cameraX + Math.cos(p.ang) * p.dist;
+          const py2 = transitionFlagCenter.y + Math.sin(p.ang) * p.dist * 0.6;
+          ctx.beginPath();
+          ctx.arc(px2, py2, Math.max(p.size * (1 - transitionProgress * 0.5), 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // kilatan saat portal hampir menutup penuh
+        if (transitionProgress > 0.82) {
+          const flashA = (transitionProgress - 0.82) / 0.18;
+          ctx.fillStyle = "rgba(255,255,255," + (flashA * 0.6) + ")";
+          ctx.beginPath();
+          ctx.arc(transitionFlagCenter.x - cameraX, transitionFlagCenter.y, 60 * flashA, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    for (const e of enemies) { if (e.alive) drawEnemy(e); }
+    for (const s of seeds) drawSeed(s);
+    for (const b of bananas) drawBanana(b);
+    for (const m of mangoBombs) drawMangoBomb(m);
+    for (const ex2 of explosions) drawExplosion(ex2);
+    drawPlayer();
+  }
+
+  function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // Inisialisasi tampilan awal
+  document.getElementById("homeCoins").textContent = coinBank;
+  document.getElementById("coinsText").textContent = coinBank;
+  loop();
+</script>
+
+</body>
+  </html>
